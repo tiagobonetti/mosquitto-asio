@@ -13,8 +13,8 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "native.hpp"
-#include "wrapper.hpp"
+#include "mosquitto_asio/native.hpp"
+#include "mosquitto_asio/wrapper.hpp"
 
 #include <boost/stacktrace.hpp>
 
@@ -44,11 +44,11 @@ void terminate();
 
 int main() {
     std::set_terminate(terminate);
-    native::lib_init();
+    mosquittoasio::native::lib_init();
 
     {
         boost::asio::io_service io;
-        wrapper mosquitto(io, broker.client_id, broker.clean_session);
+        mosquittoasio::wrapper mosquitto(io, broker.client_id, broker.clean_session);
         if (broker.capath) {
             mosquitto.set_tls(broker.capath);
         }
@@ -56,7 +56,7 @@ int main() {
         io.run();
     }
 
-    native::lib_cleanup();
+    mosquittoasio::native::lib_cleanup();
     return EXIT_SUCCESS;
 }
 

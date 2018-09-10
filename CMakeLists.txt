@@ -5,8 +5,9 @@ set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(mosquitto-asio
     src/main.cpp
-    src/native.cpp
-    src/wrapper.cpp
+    src/mosquitto_asio/native.cpp
+    src/mosquitto_asio/wrapper.cpp
+    src/mosquitto_asio/error.cpp
     )
 
 

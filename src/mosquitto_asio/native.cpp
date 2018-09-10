@@ -1,38 +1,24 @@
 #include "native.hpp"
+#include "error.hpp"
 
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
 
+namespace mosquittoasio {
 namespace native {
 namespace detail {
 
-struct mosquitto_error_category : std::error_category {
-    const char* name() const noexcept override { return "mosquitto"; }
-    std::string message(int ev) const override {
-        if (ev == static_cast<int>(mosquitto_errc::errno_)) {
-            return std::strerror(errno);
-        }
-        return strerror(ev);
-    }
-};
-
-const mosquitto_error_category g_mosquitto_error_category{};
+std::error_code make_error_code(int ev) {
+    return make_error_code(static_cast<errc>(ev));
+}
 
 void throw_error_code(int ev) {
     if (ev) {
-        throw std::system_error{ev, g_mosquitto_error_category};
+        throw std::system_error{make_error_code(ev)};
     }
 }
 }  // namespace detail
-
-std::error_code make_error_code(mosquitto_errc ec) {
-    return {static_cast<int>(ec), detail::g_mosquitto_error_category};
-}
-
-std::error_code make_error_code(int ev) {
-    return {ev, detail::g_mosquitto_error_category};
-}
 
 void lib_init() {
     auto rc = mosquitto_lib_init();
@@ -100,17 +86,17 @@ void set_log_callback(handle_type* handle, log_callback_type callback) noexcept 
 
 std::error_code connect(handle_type* handle, char const* host, int port, int keepalive) noexcept {
     auto ev = mosquitto_connect(handle, host, port, keepalive);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
 std::error_code reconnect(handle_type* handle) noexcept {
     auto ev = mosquitto_reconnect(handle);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
-void disconnect(handle_type* handle) {
-    auto rc = mosquitto_disconnect(handle);
-    detail::throw_error_code(rc);
+std::error_code disconnect(handle_type* handle) noexcept {
+    auto ev = mosquitto_disconnect(handle);
+    return detail::make_error_code(ev);
 }
 
 void publish(handle_type* handle, int* mid, char const* topic, int payloadlen, void const* payload, int qos, bool retain) {
@@ -130,7 +116,7 @@ void unsubscribe(handle_type* handle, int* mid, char const* sub) {
 
 std::error_code loop(handle_type* handle, int timeout, int max_packets) noexcept {
     auto ev = mosquitto_loop(handle, timeout, max_packets);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
 int get_socket(handle_type* handle) noexcept {
@@ -143,17 +129,17 @@ bool want_write(handle_type* handle) noexcept {
 
 std::error_code loop_read(handle_type* handle, int max_packets) noexcept {
     auto ev = mosquitto_loop_read(handle, max_packets);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
 std::error_code loop_write(handle_type* handle, int max_packets) noexcept {
     auto ev = mosquitto_loop_write(handle, max_packets);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
 std::error_code loop_misc(handle_type* handle) noexcept {
     auto ev = mosquitto_loop_misc(handle);
-    return make_error_code(ev);
+    return detail::make_error_code(ev);
 }
 
 char const* strerror(int error_code) noexcept {
@@ -161,3 +147,4 @@ char const* strerror(int error_code) noexcept {
 }
 
 }  // namespace native
+}  // namespace mosquittoasio

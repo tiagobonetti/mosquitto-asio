@@ -4,6 +4,8 @@
 
 #include <boost/asio.hpp>
 
+namespace mosquittoasio {
+
 class wrapper {
    public:
     using io_service = boost::asio::io_service;
@@ -20,11 +22,10 @@ class wrapper {
     void publish(char const* topic, std::string const& payload, int qos, bool retain = false);
 
    private:
+    using error_code = boost::system::error_code;
+
     using timer_type = boost::asio::deadline_timer;
     using socket_type = boost::asio::posix::stream_descriptor;
-
-    using system_error = boost::system::system_error;
-    using error_code = boost::system::error_code;
 
     using handle_type = native::handle_type;
     using message_type = native::message_type;
@@ -62,3 +63,4 @@ class wrapper {
     bool connected_{false};
     bool writting_{false};
 };
+}  // namespace mosquittoasio

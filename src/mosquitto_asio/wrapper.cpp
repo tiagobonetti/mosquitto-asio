@@ -1,5 +1,7 @@
 #include "wrapper.hpp"
 
+#include "error.hpp"
+
 #include <boost/current_function.hpp>
 
 #include <iomanip>
@@ -19,7 +21,9 @@
 #define NOT(msg) LOG_PRINT("NOT", "33", msg)
 #define INF(msg) LOG_PRINT("INF", "32", msg)
 #define DBG(msg) LOG_PRINT("DBG", "34", msg)
-#define DEV(msg) // LOG_PRINT("DEV", "1;30;46", msg)
+#define DEV(msg)  // LOG_PRINT("DEV", "1;30;46", msg)
+
+namespace mosquittoasio {
 
 wrapper::wrapper(io_service& io, char const* client_id, bool clean_session)
     : io_(io),
@@ -129,7 +133,7 @@ void wrapper::handle_timer_connect(error_code ec) {
     }
 
     auto rc = native::loop(native_handle_);
-    if (rc == native::mosquitto_errc::connection_lost) {
+    if (rc == errc::connection_lost) {
         await_timer_reconnect();
         return;
     } else if (rc) {
@@ -156,7 +160,7 @@ void wrapper::handle_timer_misc(error_code ec) {
     }
 
     auto rc = native::loop_misc(native_handle_);
-    if (rc == native::mosquitto_errc::connection_lost) {
+    if (rc == errc::connection_lost) {
         await_timer_reconnect();
         return;
     } else if (rc) {
@@ -204,7 +208,7 @@ void wrapper::handle_read(error_code ec) {
 
     DEV(<< "wrapper::handle_read; loop_read");
     auto rc = native::loop_read(native_handle_);
-    if (rc == native::mosquitto_errc::connection_lost) {
+    if (rc == errc::connection_lost) {
         await_timer_reconnect();
         return;
     } else if (rc) {
@@ -249,7 +253,7 @@ void wrapper::handle_write(error_code ec) {
 
     DEV(<< "wrapper::handle_write; loop_write");
     auto rc = native::loop_write(native_handle_);
-    if (rc == native::mosquitto_errc::connection_lost) {
+    if (rc == errc::connection_lost) {
         await_timer_reconnect();
         return;
     } else if (rc) {
@@ -319,3 +323,4 @@ void wrapper::on_log(int level, [[gnu::unused]] char const* str) {
             ERR(<< "unknown log level!");
     }
 }
+}  // namespace mosquittoasio
