@@ -394,7 +394,12 @@ void wrapper::on_message(std::string const& topic, std::string const& payload) {
         if (matches) {
             TRACE();
 
-            io_.post([this, shared_sub, shared_topic, shared_payload] {
+            io_.post([this, weak, shared_topic, shared_payload] {
+                auto shared_sub = weak.lock();
+                if (!shared_sub) {
+                    return;
+                }
+
                 TRACE();
                 shared_sub->handler(*shared_sub, *shared_topic, *shared_payload);
             });
