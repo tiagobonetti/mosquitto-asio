@@ -13,7 +13,7 @@ std::error_code make_error_code(int ev) {
     return make_error_code(static_cast<errc>(ev));
 }
 
-void throw_error_code(int ev) {
+void throw_on_error(int ev) {
     if (ev) {
         throw std::system_error{make_error_code(ev)};
     }
@@ -22,18 +22,18 @@ void throw_error_code(int ev) {
 
 void lib_init() {
     auto rc = mosquitto_lib_init();
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 void lib_cleanup() {
     auto rc = mosquitto_lib_cleanup();
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 handle_type* create(char const* id, bool clean_session, void* user_data) {
     auto handle = mosquitto_new(id, clean_session, user_data);
     if (handle == nullptr) {
-        detail::throw_error_code(errno);
+        detail::throw_on_error(errno);
     }
     return handle;
 }
@@ -44,12 +44,12 @@ void destroy(handle_type* handle) noexcept {
 
 void set_tls(handle_type* handle, char const* cafile, char const* capath, char const* certfile, char const* keyfile, int (*pw_callback)(char* buf, int size, int rwflag, void* user_data)) {
     auto rc = mosquitto_tls_set(handle, cafile, capath, certfile, keyfile, pw_callback);
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 void set_tls_opts(handle_type* handle, int cert_reqs, char const* tls_version, char const* ciphers) {
     auto rc = mosquitto_tls_opts_set(handle, cert_reqs, tls_version, ciphers);
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 void set_user_data(handle_type* handle, void* user_data) noexcept {
@@ -101,17 +101,17 @@ std::error_code disconnect(handle_type* handle) noexcept {
 
 void publish(handle_type* handle, int* mid, char const* topic, int payloadlen, void const* payload, int qos, bool retain) {
     auto rc = mosquitto_publish(handle, mid, topic, payloadlen, payload, qos, retain);
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 void subscribe(handle_type* handle, int* mid, char const* sub, int qos) {
     auto rc = mosquitto_subscribe(handle, mid, sub, qos);
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 void unsubscribe(handle_type* handle, int* mid, char const* sub) {
     auto rc = mosquitto_unsubscribe(handle, mid, sub);
-    detail::throw_error_code(rc);
+    detail::throw_on_error(rc);
 }
 
 std::error_code loop(handle_type* handle, int timeout, int max_packets) noexcept {
@@ -144,6 +144,13 @@ std::error_code loop_misc(handle_type* handle) noexcept {
 
 char const* strerror(int error_code) noexcept {
     return mosquitto_strerror(error_code);
+}
+
+bool topic_matches_subscription(char const* subscription, char const* topic) {
+    bool matches;
+    auto ev = mosquitto_topic_matches_sub(subscription, topic, &matches);
+    detail::throw_on_error(ev);
+    return matches;
 }
 
 }  // namespace native

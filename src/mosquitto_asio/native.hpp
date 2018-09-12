@@ -54,6 +54,7 @@ std::error_code loop_write(handle_type* handle, int max_packets = 1) noexcept;
 std::error_code loop_misc(handle_type* handle) noexcept;
 
 char const* strerror(int error_code) noexcept;
+bool topic_matches_subscription(char const* subscription, char const* topic);
 
 }  // namespace native
 }  // namespace mosquittoasio

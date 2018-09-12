@@ -39,4 +39,5 @@ target_compile_options(mosquitto-asio-test PRIVATE
 target_link_libraries(mosquitto-asio-test
     mosquitto-asio
     dl #boost::stacktrace
+    pthread
     )

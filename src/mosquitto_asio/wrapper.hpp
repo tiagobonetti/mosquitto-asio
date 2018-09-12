@@ -4,11 +4,25 @@
 
 #include <boost/asio.hpp>
 
+#include <memory>
+
 namespace mosquittoasio {
+
+struct subscription {
+    using handler_type = std::function<void(subscription const&,
+                                            std::string const& topic,
+                                            std::string const& payload)>;
+
+    std::string topic;
+    int qos;
+    handler_type handler;
+};
 
 class wrapper {
    public:
     using io_service = boost::asio::io_service;
+    using subscription_ptr = std::shared_ptr<subscription>;
+
 
     wrapper(io_service& io, char const* client_id = nullptr, bool clean_session = true);
     ~wrapper();
@@ -21,6 +35,10 @@ class wrapper {
 
     void publish(char const* topic, std::string const& payload, int qos, bool retain = false);
 
+    subscription_ptr subscribe(std::string topic, int qos, subscription::handler_type handler);
+    void unsubscribe(subscription_ptr);
+
+
    private:
     using error_code = boost::system::error_code;
 
@@ -28,7 +46,7 @@ class wrapper {
     using socket_type = boost::asio::posix::stream_descriptor;
 
     using handle_type = native::handle_type;
-    using message_type = native::message_type;
+
 
     void await_timer_reconnect();
     void handle_timer_reconnect(error_code ec);
@@ -49,10 +67,16 @@ class wrapper {
 
     void set_callbacks();
 
+    subscription_ptr create_subscription(std::string topic, int qos, subscription::handler_type handler);
+    void clear_expired();
+
+    void send_subscribe(subscription const&);
+    void send_unsubscribe(subscription const&);
+
     void on_connect(int rc);
     void on_disconnect(int rc);
-    void on_message(message_type const& message);
-    void on_log(int level, char const* str);
+    void on_message(std::string const& topic, std::string const& payload);
+    void on_log(int level, std::string message);
 
     io_service& io_;
     timer_type timer_;
@@ -62,5 +86,8 @@ class wrapper {
 
     bool connected_{false};
     bool writting_{false};
+
+    using subscription_wptr = std::weak_ptr<subscription>;
+    std::vector<subscription_wptr> subscriptions_;
 };
 }  // namespace mosquittoasio
