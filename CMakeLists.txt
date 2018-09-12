@@ -6,9 +6,10 @@ set(CMAKE_BUILD_TYPE Debug)
 #mosquitto-asio library
 
 add_library(mosquitto-asio STATIC
-    src/mosquitto_asio/native.cpp
-    src/mosquitto_asio/wrapper.cpp
     src/mosquitto_asio/error.cpp
+    src/mosquitto_asio/native.cpp
+    src/mosquitto_asio/subscription.cpp
+    src/mosquitto_asio/wrapper.cpp
     )
 target_include_directories(mosquitto-asio PRIVATE src)
 target_compile_options(mosquitto-asio PRIVATE

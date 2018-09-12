@@ -1,67 +1,15 @@
 #pragma once
 
 #include "native.hpp"
+#include "subscription.hpp"
 
 #include <boost/asio.hpp>
 
-#include <memory>
-
-#include <iostream>
-
 namespace mosquittoasio {
-
-//struct subscription_tag {};
-//using sub_token = std::shared_ptr<subscription_tag>;
-
-struct subscription {
-    using handler_type = std::function<void(subscription const&,
-                                            std::string const& topic,
-                                            std::string const& payload)>;
-
-    subscription() {
-        std::cout << " default construct subscription\n";
-    }
-
-    subscription(std::string t, int q, handler_type h)
-        : topic(t), qos(q), handler(h) {
-        std::cout << "construct subscription\n";
-    }
-    subscription(subscription const& o)
-        : subscription(o.topic, o.qos, o.handler) {
-        std::cout << "copy subscription\n";
-    }
-    subscription& operator=(subscription const& o) {
-        topic = o.topic;
-        qos = o.qos;
-        handler = o.handler;
-        std::cout << "copy assign subscription\n";
-        return *this;
-    }
-    subscription(subscription&& o) : subscription(std::move(o.topic),
-                                                  std::move(o.qos),
-                                                  std::move(o.handler)) {
-        std::cout << "move subscription\n";
-    }
-    subscription& operator=(subscription&& o) {
-        topic = std::move(o.topic);
-        qos = std::move(o.qos);
-        handler = std::move(o.handler);
-        std::cout << "move assign subscription\n";
-        return *this;
-    }
-    ~subscription() {
-        std::cout << "destroying subscription\n";
-    }
-
-    std::string topic;
-    int qos;
-    handler_type handler;
-};
 
 class wrapper {
    public:
     using io_service = boost::asio::io_service;
-    using subscription_ptr = std::shared_ptr<subscription>;
 
     wrapper(io_service& io, char const* client_id = nullptr, bool clean_session = true);
     ~wrapper();
@@ -74,8 +22,10 @@ class wrapper {
 
     void publish(char const* topic, std::string const& payload, int qos, bool retain = false);
 
-    subscription_ptr subscribe(std::string topic, int qos, subscription::handler_type handler);
-    void unsubscribe(subscription_ptr&);
+    using entry_type = subscription::entry_type;
+    using unique_entry_type = std::unique_ptr<entry_type>;
+    void register_subscription(unique_entry_type&&);
+    void unregister_subscription(entry_type const*);
 
    private:
     using error_code = boost::system::error_code;
@@ -104,11 +54,8 @@ class wrapper {
 
     void set_callbacks();
 
-    subscription_ptr create_subscription(std::string topic, int qos, subscription::handler_type handler);
-    void clear_expired();
-
-    void send_subscribe(subscription const&);
-    void send_unsubscribe(subscription const&);
+    void send_subscribe(entry_type const&);
+    void send_unsubscribe(entry_type const&);
 
     void on_connect(int rc);
     void on_disconnect(int rc);
@@ -124,7 +71,8 @@ class wrapper {
     bool connected_{false};
     bool writting_{false};
 
-    using subscription_wptr = std::weak_ptr<subscription>;
-    std::vector<subscription_wptr> subscriptions_;
+    using shared_entry_type = std::shared_ptr<entry_type>;
+    using weak_entry_type = std::weak_ptr<entry_type>;
+    std::vector<shared_entry_type> entries_;
 };
 }  // namespace mosquittoasio

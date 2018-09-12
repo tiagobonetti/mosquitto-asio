@@ -4,6 +4,7 @@
 
 #include <cxxabi.h>
 #include <boost/stacktrace.hpp>
+#include <boost/make_unique.hpp>
 
 #include <iostream>
 
@@ -43,37 +44,42 @@ int main() {
         mosquitto.set_tls(broker.capath);
     }
 
-    auto print_message = [](mosquittoasio::subscription const& sub,
-                            std::string const& topic,
-                            std::string const& payload) {
-        std::cout << "got mosquitto message!\n"
-                  << " subscribed to:\"" << sub.topic
-                  << "\"\n topic:\"" << topic
-                  << "\"\n payload:\"" << payload
-                  << "\"\n";
+    using subscription = mosquittoasio::subscription;
+    auto sub1 = boost::make_unique<subscription>(mosquitto);
+    auto sub2 = boost::make_unique<subscription>(mosquitto);
+    auto sub3 = boost::make_unique<subscription>(mosquitto);
+    auto sub4 = boost::make_unique<subscription>(mosquitto);
+
+    sub4->subscribe("mosquitto-asio/unsub", 0,
+                    [&](std::string const& topic,
+                        std::string const& payload) {
+
+                        std::cout << "got mosquitto message!\n"
+                                  << " subscribed to:\"" << sub4->get_topic()
+                                  << "\"\n topic:\"" << topic
+                                  << "\"\n payload:\"" << payload
+                                  << "\"\n"
+                                  << " unsubscribing!\n";
+
+                        sub1.reset();
+                        sub2.reset();
+                        sub3.reset();
+                        sub4.reset();
+                    });
+
+    auto make_printer = [](mosquittoasio::subscription const& sub) {
+        return [&](std::string const& topic,
+                   std::string const& payload) {
+            std::cout << "got mosquitto message!\n"
+                      << " subscribed to:\"" << sub.get_topic()
+                      << "\"\n topic:\"" << topic
+                      << "\"\n payload:\"" << payload
+                      << "\"\n";
+        };
     };
-
-    mosquittoasio::wrapper::subscription_ptr sub3;
-    auto sub1 = mosquitto.subscribe("mosquitto-asio/test", 0, print_message);
-    auto sub2 = mosquitto.subscribe("mosquitto-asio/+", 0, print_message);
-    auto sub4 = mosquitto.subscribe("mosquitto-asio/unsub", 0,
-                                    [&](mosquittoasio::subscription const& sub,
-                                        std::string const& topic,
-                                        std::string const& payload) {
-
-                                        std::cout << "got mosquitto message!\n"
-                                                  << " subscribed to:\"" << sub.topic
-                                                  << "\"\n topic:\"" << topic
-                                                  << "\"\n payload:\"" << payload
-                                                  << "\"\n"
-                                                  <<" unsubscribing!\n";
-
-                                        mosquitto.unsubscribe(sub1);
-                                        mosquitto.unsubscribe(sub2);
-                                        mosquitto.unsubscribe(sub3);
-                                    });
-
-    sub3 = mosquitto.subscribe("mosquitto-asio/#", 0, print_message);
+    sub1->subscribe("mosquitto-asio/test", 0, make_printer(*sub1));
+    sub2->subscribe("mosquitto-asio/+", 0, make_printer(*sub2));
+    sub3->subscribe("mosquitto-asio/#", 0, make_printer(*sub3));
 
     mosquitto.connect(broker.host, broker.port, broker.keep_alive);
 
