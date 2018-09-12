@@ -1,9 +1,6 @@
 #include "mosquitto_asio/library.hpp"
-#include "mosquitto_asio/native.hpp"
 #include "mosquitto_asio/wrapper.hpp"
 
-#include <cxxabi.h>
-#include <boost/stacktrace.hpp>
 #include <boost/make_unique.hpp>
 
 #include <iostream>
