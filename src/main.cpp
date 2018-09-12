@@ -53,18 +53,27 @@ int main() {
                   << "\"\n";
     };
 
+    mosquittoasio::wrapper::subscription_ptr sub3;
     auto sub1 = mosquitto.subscribe("mosquitto-asio/test", 0, print_message);
     auto sub2 = mosquitto.subscribe("mosquitto-asio/+", 0, print_message);
-    auto sub3 = mosquitto.subscribe("mosquitto-asio/#", 0, print_message);
     auto sub4 = mosquitto.subscribe("mosquitto-asio/unsub", 0,
-                                    [&](mosquittoasio::subscription const&,
-                                        std::string const&,
-                                        std::string const&) {
+                                    [&](mosquittoasio::subscription const& sub,
+                                        std::string const& topic,
+                                        std::string const& payload) {
+
+                                        std::cout << "got mosquitto message!\n"
+                                                  << " subscribed to:\"" << sub.topic
+                                                  << "\"\n topic:\"" << topic
+                                                  << "\"\n payload:\"" << payload
+                                                  << "\"\n"
+                                                  <<" unsubscribing!\n";
 
                                         mosquitto.unsubscribe(sub1);
                                         mosquitto.unsubscribe(sub2);
                                         mosquitto.unsubscribe(sub3);
                                     });
+
+    sub3 = mosquitto.subscribe("mosquitto-asio/#", 0, print_message);
 
     mosquitto.connect(broker.host, broker.port, broker.keep_alive);
 

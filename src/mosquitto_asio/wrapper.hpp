@@ -6,12 +6,52 @@
 
 #include <memory>
 
+#include <iostream>
+
 namespace mosquittoasio {
+
+//struct subscription_tag {};
+//using sub_token = std::shared_ptr<subscription_tag>;
 
 struct subscription {
     using handler_type = std::function<void(subscription const&,
                                             std::string const& topic,
                                             std::string const& payload)>;
+
+    subscription() {
+        std::cout << " default construct subscription\n";
+    }
+
+    subscription(std::string t, int q, handler_type h)
+        : topic(t), qos(q), handler(h) {
+        std::cout << "construct subscription\n";
+    }
+    subscription(subscription const& o)
+        : subscription(o.topic, o.qos, o.handler) {
+        std::cout << "copy subscription\n";
+    }
+    subscription& operator=(subscription const& o) {
+        topic = o.topic;
+        qos = o.qos;
+        handler = o.handler;
+        std::cout << "copy assign subscription\n";
+        return *this;
+    }
+    subscription(subscription&& o) : subscription(std::move(o.topic),
+                                                  std::move(o.qos),
+                                                  std::move(o.handler)) {
+        std::cout << "move subscription\n";
+    }
+    subscription& operator=(subscription&& o) {
+        topic = std::move(o.topic);
+        qos = std::move(o.qos);
+        handler = std::move(o.handler);
+        std::cout << "move assign subscription\n";
+        return *this;
+    }
+    ~subscription() {
+        std::cout << "destroying subscription\n";
+    }
 
     std::string topic;
     int qos;
@@ -22,7 +62,6 @@ class wrapper {
    public:
     using io_service = boost::asio::io_service;
     using subscription_ptr = std::shared_ptr<subscription>;
-
 
     wrapper(io_service& io, char const* client_id = nullptr, bool clean_session = true);
     ~wrapper();
@@ -36,8 +75,7 @@ class wrapper {
     void publish(char const* topic, std::string const& payload, int qos, bool retain = false);
 
     subscription_ptr subscribe(std::string topic, int qos, subscription::handler_type handler);
-    void unsubscribe(subscription_ptr);
-
+    void unsubscribe(subscription_ptr&);
 
    private:
     using error_code = boost::system::error_code;
@@ -46,7 +84,6 @@ class wrapper {
     using socket_type = boost::asio::posix::stream_descriptor;
 
     using handle_type = native::handle_type;
-
 
     void await_timer_reconnect();
     void handle_timer_reconnect(error_code ec);

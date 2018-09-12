@@ -22,7 +22,7 @@
 #define INF(msg) LOG_PRINT("INF", "32", msg)
 #define DBG(msg) LOG_PRINT("DBG", "34", msg)
 #define DEV(msg)  // LOG_PRINT("DEV", "1;30;46", msg)
-#define TRACE()   // LOG_PRINT("TRACE", "1;30;46", << __LINE__ << " - " << BOOST_CURRENT_FUNCTION)
+#define TRACE() LOG_PRINT("TRACE", "1;30;46", << __LINE__ << " - " << BOOST_CURRENT_FUNCTION)
 
 namespace mosquittoasio {
 
@@ -65,30 +65,35 @@ auto wrapper::subscribe(std::string topic, int qos, subscription::handler_type h
     }
 
     INF(<< "subscribe; topic: " << topic << " qos: " << qos);
-
     auto sub = create_subscription(topic, qos, handler);
 
     if (connected_) {
         send_subscribe(*sub);
     }
+
     return sub;
 }
 
-void wrapper::unsubscribe(subscription_ptr sub) {
+void wrapper::unsubscribe(subscription_ptr& sub) {
     if (!sub) {
+        TRACE();
         return;
     }
+    TRACE();
     if (connected_) {
+        TRACE();
         send_unsubscribe(*sub);
     }
+    TRACE();
     sub.reset();
+    TRACE();
     clear_expired();
 }
 
 // internal
 
 auto wrapper::create_subscription(std::string topic, int qos, subscription::handler_type handler) -> subscription_ptr {
-    auto sub = std::make_shared<subscription>(subscription{topic, qos, handler});
+    auto sub = std::make_shared<subscription>(topic, qos, handler);
     subscriptions_.push_back(std::weak_ptr<subscription>(sub));
     return sub;
 }
@@ -397,6 +402,7 @@ void wrapper::on_message(std::string const& topic, std::string const& payload) {
             io_.post([this, weak, shared_topic, shared_payload] {
                 auto shared_sub = weak.lock();
                 if (!shared_sub) {
+                    TRACE();
                     return;
                 }
 
