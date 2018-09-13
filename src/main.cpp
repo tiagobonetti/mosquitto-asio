@@ -46,6 +46,7 @@ int main() {
     auto sub2 = boost::make_unique<subscription>(mosquitto);
     auto sub3 = boost::make_unique<subscription>(mosquitto);
     auto sub4 = boost::make_unique<subscription>(mosquitto);
+    auto sub5 = boost::make_unique<subscription>(mosquitto);
 
     sub4->subscribe("mosquitto-asio/unsub", 0,
                     [&](std::string const& topic,
@@ -58,10 +59,16 @@ int main() {
                                   << "\"\n"
                                   << " unsubscribing!\n";
 
+                        if (!sub1) {
+                            sub4.reset();
+                            sub5.reset();
+                        }
+
                         sub1.reset();
+
                         sub2.reset();
                         sub3.reset();
-                        sub4.reset();
+
                     });
 
     auto make_printer = [](mosquittoasio::subscription const& sub) {
@@ -74,9 +81,20 @@ int main() {
                       << "\"\n";
         };
     };
+
     sub1->subscribe("mosquitto-asio/test", 0, make_printer(*sub1));
     sub2->subscribe("mosquitto-asio/+", 0, make_printer(*sub2));
     sub3->subscribe("mosquitto-asio/#", 0, make_printer(*sub3));
+
+    sub5->subscribe("mosquitto-asio/test", 2,
+                   [&](std::string const& topic,
+                       std::string const& payload) {
+                       std::cout << "repeated! === got mosquitto message!\n"
+                                 << " subscribed to:\"" << sub5->get_topic()
+                                 << "\"\n topic:\"" << topic
+                                 << "\"\n payload:\"" << payload
+                                 << "\"\n";
+                   });
 
     mosquitto.connect(broker.host, broker.port, broker.keep_alive);
 

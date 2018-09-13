@@ -54,8 +54,8 @@ class wrapper {
 
     void set_callbacks();
 
-    void send_subscribe(entry_type const&);
-    void send_unsubscribe(entry_type const&);
+    void send_subscribe(std::string const& topic, int qos);
+    void send_unsubscribe(std::string const& topic);
 
     void on_connect(int rc);
     void on_disconnect(int rc);

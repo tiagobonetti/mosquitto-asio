@@ -51,8 +51,8 @@ void wrapper::register_subscription(unique_entry_type&& udata) {
     entries_.emplace_back(std::move(udata));
 
     if (connected_) {
-        auto sub = *entries_.back();
-        send_subscribe(sub);
+        auto shared_entry = entries_.back();
+        send_subscribe(shared_entry->topic, shared_entry->qos);
     }
 }
 
@@ -69,16 +69,17 @@ void wrapper::unregister_subscription(entry_type const* entry) {
         return;
     }
     if (connected_) {
-        send_unsubscribe(*entry);
+        send_unsubscribe(entry->topic);
     }
     entries_.erase(it);
 }
 
-void wrapper::send_subscribe(entry_type const& sub) {
-    native::subscribe(native_handle_, nullptr, sub.topic.c_str(), sub.qos);
+void wrapper::send_subscribe(std::string const& topic, int qos) {
+    native::subscribe(native_handle_, nullptr, topic.c_str(), qos);
 }
-void wrapper::send_unsubscribe(entry_type const& sub) {
-    native::unsubscribe(native_handle_, nullptr, sub.topic.c_str());
+
+void wrapper::send_unsubscribe(std::string const& topic) {
+    native::unsubscribe(native_handle_, nullptr, topic.c_str());
 }
 
 void wrapper::set_callbacks() {
@@ -293,7 +294,7 @@ void wrapper::on_connect(int rc) {
 
     std::for_each(entries_.begin(), entries_.end(),
                   [this](shared_entry_type const& shared_entry) {
-                      send_subscribe(*shared_entry);
+                      send_subscribe(shared_entry->topic, shared_entry->qos);
                   });
 
     publish("mosquitto-asio-test", "connected!", 0, false);
