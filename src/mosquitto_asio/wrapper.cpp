@@ -3,11 +3,6 @@
 #include "error.hpp"
 #include "log.hpp"
 
-#include <boost/current_function.hpp>
-
-#include <iomanip>
-#include <iostream>
-
 namespace mosquittoasio {
 
 wrapper::wrapper(io_service& io, char const* client_id, bool clean_session)
@@ -39,39 +34,10 @@ void wrapper::connect(char const* host, int port, int keep_alive) {
     await_timer_connect();
 }
 
-void wrapper::publish(char const* topic, std::string const& payload, int qos, bool retain) {
-    native::publish(native_handle_, nullptr, topic, payload.size(), payload.c_str(), qos, retain);
-}
-
-void wrapper::register_subscription(unique_entry_type&& udata) {
-    if (udata == nullptr) {
-        return;
-    }
-
-    entries_.emplace_back(std::move(udata));
-
-    if (connected_) {
-        auto shared_entry = entries_.back();
-        send_subscribe(shared_entry->topic, shared_entry->qos);
-    }
-}
-
-void wrapper::unregister_subscription(entry_type const* entry) {
-    if (entry == nullptr) {
-        return;
-    }
-    auto it = std::find_if(entries_.cbegin(), entries_.cend(),
-                           [&](shared_entry_type const& shared_entry) {
-                               return shared_entry.get() == entry;
-                           });
-
-    if (it == entries_.cend()) {
-        return;
-    }
-    if (connected_) {
-        send_unsubscribe(entry->topic);
-    }
-    entries_.erase(it);
+void wrapper::publish(char const* topic, std::string const& payload,
+                      int qos, bool retain) {
+    native::publish(native_handle_, nullptr, topic,
+                    payload.size(), payload.c_str(), qos, retain);
 }
 
 void wrapper::send_subscribe(std::string const& topic, int qos) {
@@ -292,12 +258,8 @@ void wrapper::on_connect(int rc) {
     connected_ = true;
     assign_socket();
 
-    std::for_each(entries_.begin(), entries_.end(),
-                  [this](shared_entry_type const& shared_entry) {
-                      send_subscribe(shared_entry->topic, shared_entry->qos);
-                  });
-
     publish("mosquitto-asio-test", "connected!", 0, false);
+    connected_signal();
 }
 
 void wrapper::on_disconnect(int rc) {
@@ -310,6 +272,7 @@ void wrapper::on_disconnect(int rc) {
 
     connected_ = false;
     release_socket();
+    disconnected_signal();
 
     if (rc) {
         LOG_ERROR(<< "wrapper::on_disconnect; disconnected unexpectedly:"
@@ -324,29 +287,7 @@ void wrapper::on_message(std::string const& topic, std::string const& payload) {
     LOG_INFO(<< "wrapper::on_message; topic:\"" << topic
              << "\" payload:\"" << payload << '\"');
 
-    auto shared_topic = std::make_shared<std::string>(topic);
-    auto shared_payload = std::make_shared<std::string>(payload);
-
-    auto dispatcher = [&](shared_entry_type const& shared_entry) {
-        auto entry = *shared_entry;
-        auto matches = native::topic_matches_subscription(entry.topic.c_str(),
-                                                          topic.c_str());
-        if (!matches) {
-            return;
-        }
-
-        auto weak_entry = weak_entry_type(shared_entry);
-        io_.post([this, weak_entry, shared_topic, shared_payload] {
-            auto shared_entry = weak_entry.lock();
-            if (shared_entry == nullptr) {
-                return;
-            }
-
-            auto entry = *shared_entry;
-            entry.handler(*shared_topic, *shared_payload);
-        });
-    };
-    std::for_each(entries_.cbegin(), entries_.cend(), dispatcher);
+    message_received_signal(topic, payload);
 }
 
 void wrapper::on_log(int level, [[gnu::unused]] std::string message) {

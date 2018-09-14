@@ -1,37 +1,33 @@
 #pragma once
 
-#include <functional>
-#include <memory>
-#include <ostream>
+#include <boost/signals2.hpp>
 
 namespace mosquittoasio {
 
-class wrapper;
+class dispatcher;
 
 class subscription {
    public:
-    using handler_type = std::function<void(std::string const& topic,
-                                            std::string const& payload)>;
+    subscription() = default;
 
-    struct entry_type {
-        std::string topic;
-        int qos;
-        handler_type handler;
-    };
+    subscription(subscription const&) = delete;
+    subscription& operator=(subscription const&) = delete;
 
-    subscription(wrapper&);
-    subscription(subscription&&) = default;
-    subscription& operator=(subscription&&) = default;
+    subscription(subscription&&);
+    subscription& operator=(subscription&&);
+
     ~subscription();
 
-    void subscribe(std::string topic, int qos, handler_type handler);
-    void unsubscribe();
-
-    std::string const& get_topic() const;
-
    private:
-    entry_type* entry_;
-    wrapper& wrapper_;
+    using connection = boost::signals2::connection;
+
+    subscription(dispatcher&, std::string const&, connection&&);
+
+    dispatcher* dispatcher_{nullptr};
+    std::string const* topic_{nullptr};
+    boost::signals2::connection connection_;
+
+    friend class dispatcher;
 };
 
 }  // namespace mosquittoasio

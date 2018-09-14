@@ -1,6 +1,6 @@
 #include "subscription.hpp"
 
-#include "wrapper.hpp"
+#include "dispatcher.hpp"
 
 #include "log.hpp"
 
@@ -10,29 +10,30 @@
 
 namespace mosquittoasio {
 
-subscription ::subscription(wrapper& w) : wrapper_(w) {
-}
-
 subscription::~subscription() {
-    unsubscribe();
-}
-
-void subscription::subscribe(std::string topic, int qos, handler_type handler) {
-    auto unique_entry = boost::make_unique<entry_type>(
-        entry_type{topic, qos, handler});
-
-    entry_ = unique_entry.get();
-    wrapper_.register_subscription(std::move(unique_entry));
-}
-
-void subscription::unsubscribe() {
-    wrapper_.unregister_subscription(entry_);
-}
-std::string const& subscription::get_topic() const {
-    if (entry_ == nullptr) {
-        throw std::logic_error("cannot get topic, not subscribed");
+    connection_.disconnect();
+    if (dispatcher_ && topic_) {
+        dispatcher_->unsubscribe(*topic_);
     }
-    return entry_->topic;
+}
+
+subscription::subscription(subscription&& o)
+    : dispatcher_(o.dispatcher_),
+      topic_(o.topic_),
+      connection_(std::move(connection_)) {
+    o.dispatcher_ = nullptr;
+    o.topic_ = nullptr;
+}
+
+subscription& subscription::operator=(subscription&& o) {
+    std::swap(dispatcher_, o.dispatcher_);
+    std::swap(topic_, o.topic_);
+    std::swap(connection_, o.connection_);
+    return *this;
+}
+
+subscription::subscription(dispatcher& d, std::string const& t, connection&& c)
+    : dispatcher_(&d), topic_(&t), connection_(std::move(c)) {
 }
 
 }  // namespace mosquittoasio

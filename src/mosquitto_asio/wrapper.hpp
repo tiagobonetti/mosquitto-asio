@@ -4,12 +4,18 @@
 #include "subscription.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/signals2.hpp>
 
 namespace mosquittoasio {
 
 class wrapper {
    public:
     using io_service = boost::asio::io_service;
+
+    using connected_signal_type = boost::signals2::signal<void()>;
+    using disconnected_signal_type = boost::signals2::signal<void()>;
+    using message_received_signal_type = boost::signals2::signal<
+        void(std::string const& topic, std::string const& payload)>;
 
     wrapper(io_service& io, char const* client_id = nullptr, bool clean_session = true);
     ~wrapper();
@@ -20,12 +26,13 @@ class wrapper {
     void set_tls(char const* capath);
     void connect(char const* host, int port, int keep_alive);
 
+    bool is_connected() const { return connected_; }
+
     void publish(char const* topic, std::string const& payload, int qos, bool retain = false);
 
-    using entry_type = subscription::entry_type;
-    using unique_entry_type = std::unique_ptr<entry_type>;
-    void register_subscription(unique_entry_type&&);
-    void unregister_subscription(entry_type const*);
+    connected_signal_type connected_signal;
+    disconnected_signal_type disconnected_signal;
+    message_received_signal_type message_received_signal;
 
    private:
     using error_code = boost::system::error_code;
@@ -71,8 +78,6 @@ class wrapper {
     bool connected_{false};
     bool writting_{false};
 
-    using shared_entry_type = std::shared_ptr<entry_type>;
-    using weak_entry_type = std::weak_ptr<entry_type>;
-    std::vector<shared_entry_type> entries_;
+    friend class dispatcher;
 };
 }  // namespace mosquittoasio
