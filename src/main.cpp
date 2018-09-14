@@ -38,7 +38,10 @@ mosquittoasio::library g_mosquitto_lib;
 
 int main() {
     boost::asio::io_service io;
-    mosquittoasio::wrapper mosquitto(io, broker.client_id, broker.clean_session);
+
+    mosquittoasio::wrapper mosquitto(
+        io, broker.client_id, broker.clean_session);
+
     if (broker.capath) {
         mosquitto.set_tls(broker.capath);
     }
@@ -52,52 +55,50 @@ int main() {
     auto sub4 = boost::make_unique<subscription>();
     auto sub5 = boost::make_unique<subscription>();
 
-    *sub4 = disp.subscribe("mosquitto-asio/unsub", 0,
-                           [&](std::string const& topic,
-                               std::string const& payload) {
+    *sub4 = disp.subscribe(
+        "mosquitto-asio/unsub", 0,
+        [&](std::string const& topic, std::string const& payload) {
+            std::cout << "got mosquitto message!\n"
+                      << " subscribed to:\"mosquitto-asio/unsub"
+                      << "\"\n topic:\"" << topic
+                      << "\"\n payload:\"" << payload
+                      << "\"\n"
+                      << " unsubscribing!\n";
 
-                               std::cout << "got mosquitto message!\n"
-                                         << " subscribed to:\"mosquitto-asio/unsub"
-                                         << "\"\n topic:\"" << topic
-                                         << "\"\n payload:\"" << payload
-                                         << "\"\n"
-                                         << " unsubscribing!\n";
-
-                               if (!sub1) {
-                                   sub4.reset();
-                                   sub5.reset();
-                               }
-
-                               sub1.reset();
-                               sub2.reset();
-                               sub3.reset();
-                           });
+            if (!sub1) {
+                sub4.reset();
+                sub5.reset();
+            }
+            sub1.reset();
+            sub2.reset();
+            sub3.reset();
+        });
 
     auto make_sub = [&disp](std::string sub_topic) {
-        return disp.subscribe(sub_topic, 0,
-                              [&, sub_topic](std::string const& topic,
-                                             std::string const& payload) {
-                                  std::cout << "got mosquitto message!\n"
-                                            << " subscribed to:\"" << sub_topic
-                                            << "\"\n topic:\"" << topic
-                                            << "\"\n payload:\"" << payload
-                                            << "\"\n";
-                              });
+        return disp.subscribe(
+            sub_topic, 0,
+            [sub_topic](std::string const& topic, std::string const& payload) {
+                std::cout << "got mosquitto message!\n"
+                          << " subscribed to:\"" << sub_topic
+                          << "\"\n topic:\"" << topic
+                          << "\"\n payload:\"" << payload
+                          << "\"\n";
+            });
     };
 
     *sub1 = make_sub("mosquitto-asio/test");
     *sub2 = make_sub("mosquitto-asio/+");
     *sub3 = make_sub("mosquitto-asio/#");
 
-    *sub5 = disp.subscribe("mosquitto-asio/test", 2,
-                           [&](std::string const& topic,
-                               std::string const& payload) {
-                               std::cout << "repeated! === got mosquitto message!\n"
-                                         << " subscribed to:\"mosquitto-asio/test"
-                                         << "\"\n topic:\"" << topic
-                                         << "\"\n payload:\"" << payload
-                                         << "\"\n";
-                           });
+    *sub5 = disp.subscribe(
+        "mosquitto-asio/test", 2,
+        [&](std::string const& topic, std::string const& payload) {
+            std::cout << "got mosquitto message! (2)\n"
+                      << " subscribed to:\"mosquitto-asio/test"
+                      << "\"\n topic:\"" << topic
+                      << "\"\n payload:\"" << payload
+                      << "\"\n";
+        });
 
     mosquitto.connect(broker.host, broker.port, broker.keep_alive);
 
