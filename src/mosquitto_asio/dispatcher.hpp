@@ -2,27 +2,17 @@
 
 #include "subscription.hpp"
 
-#include <boost/asio.hpp>
 #include <boost/signals2.hpp>
 
 #include <unordered_map>
 
 namespace mosquittoasio {
 
-class wrapper;
+class client;
 
 class dispatcher {
    public:
-    using io_service = boost::asio::io_service;
-
-    using handler_type = std::function<void(std::string const& topic,
-                                            std::string const& payload)>;
-
-    using sig_type = boost::signals2::signal<
-        void(std::string const& topic, std::string const& payload)>;
-    using sub_type = boost::signals2::scoped_connection;
-
-    dispatcher(wrapper&);
+    dispatcher(client&);
 
     dispatcher(dispatcher const&) = delete;
     dispatcher& operator=(dispatcher const&) = delete;
@@ -30,27 +20,41 @@ class dispatcher {
     dispatcher(dispatcher&&) = default;
     dispatcher& operator=(dispatcher&&) = default;
 
-    subscription subscribe(std::string topic, int qos, handler_type h);
+    template <typename Handler>
+    subscription subscribe(std::string topic, int qos, Handler&& h);
+
+    void unsubscribe(std::string const& topic);
 
    private:
+    using callback_type = void(std::string const& topic,
+                               std::string const& payload);
+    using signal_type = boost::signals2::signal<callback_type>;
+
     struct entry {
         std::string topic;
         int qos;
-        sig_type signal;
+        signal_type signal;
     };
 
-    void unsubscribe(std::string const& topic);
+    entry& emplace_entry(std::string topic, int qos);
+    void erase_entry(std::string const& topic);
 
     void on_connect();
     void on_message(std::string const& topic, std::string const& payload);
 
-    wrapper& wrapper_;
+    client& client_;
 
     boost::signals2::scoped_connection connected_connection;
     boost::signals2::scoped_connection message_received_connection;
 
     std::unordered_map<std::string, entry> entries_;
-
-    friend class subscription;
 };
+
+template <typename Handler>
+subscription dispatcher::subscribe(std::string topic, int qos, Handler&& h) {
+    auto& entry = emplace_entry(topic, qos);
+    return subscription{*this, entry.topic,
+                        entry.signal.connect(std::forward<Handler>(h))};
+}
+
 }  // namespace mosquittoasio

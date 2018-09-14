@@ -8,7 +8,7 @@ set(CMAKE_BUILD_TYPE Debug)
 add_library(mosquitto-asio STATIC
     src/mosquitto_asio/error.cpp
     src/mosquitto_asio/native.cpp
-    src/mosquitto_asio/wrapper.cpp
+    src/mosquitto_asio/client.cpp
     src/mosquitto_asio/dispatcher.cpp
     src/mosquitto_asio/subscription.cpp
     )

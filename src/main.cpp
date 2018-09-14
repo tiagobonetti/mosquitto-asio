@@ -1,7 +1,7 @@
 #include "mosquitto_asio/library.hpp"
 
 #include "mosquitto_asio/dispatcher.hpp"
-#include "mosquitto_asio/wrapper.hpp"
+#include "mosquitto_asio/client.hpp"
 
 #include <boost/make_unique.hpp>
 
@@ -39,7 +39,7 @@ mosquittoasio::library g_mosquitto_lib;
 int main() {
     boost::asio::io_service io;
 
-    mosquittoasio::wrapper mosquitto(
+    mosquittoasio::client mosquitto(
         io, broker.client_id, broker.clean_session);
 
     if (broker.capath) {

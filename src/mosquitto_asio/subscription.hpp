@@ -21,13 +21,14 @@ class subscription {
    private:
     using connection = boost::signals2::connection;
 
+    // only a dispatcher can create a active subscription
+    friend class dispatcher;
+
     subscription(dispatcher&, std::string const&, connection&&);
 
     dispatcher* dispatcher_{nullptr};
     std::string const* topic_{nullptr};
     boost::signals2::connection connection_;
-
-    friend class dispatcher;
 };
 
 }  // namespace mosquittoasio
