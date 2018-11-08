@@ -16,22 +16,13 @@ struct broker_info {
     char const* capath;
 };
 
-constexpr broker_info broker_{
+constexpr broker_info broker{
     "mosquitto-asio-test",
     true,
     "test.mosquitto.org",
     8883,
     5,
     "/etc/ssl/certs",
-};
-
-constexpr broker_info broker{
-    "mosquitto-asio-test",
-    true,
-    "broker.hivemq.com",
-    1883,
-    5,
-    nullptr,
 };
 
 mosquittoasio::library g_mosquitto_lib;

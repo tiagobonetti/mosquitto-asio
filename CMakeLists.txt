@@ -3,6 +3,10 @@ project(mosquitto-asio)
 
 set(CMAKE_BUILD_TYPE Debug)
 
+# Include paths to a local mosquitto build
+# link_directories(~/mqtt/mosquitto/build/lib)
+# include_directories(~/mqtt/mosquitto/lib)
+
 #mosquitto-asio library
 
 add_library(mosquitto-asio STATIC

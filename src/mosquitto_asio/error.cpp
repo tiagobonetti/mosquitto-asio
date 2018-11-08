@@ -1,5 +1,7 @@
 #include "error.hpp"
 
+#include "native.hpp"
+
 #include <cerrno>
 #include <cstring>
 
@@ -12,7 +14,7 @@ struct mosquitto_error_category : std::error_category {
         if (ev == static_cast<int>(errc::errno_)) {
             return std::strerror(errno);
         }
-        return strerror(ev);
+        return native::strerror(ev);
     }
 };
 

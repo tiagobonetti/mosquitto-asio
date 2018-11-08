@@ -8,6 +8,8 @@ CMakeScripts
 Makefile
 cmake_install.cmake
 install_manifest.txt
+.ninja*
+*.ninja
 
 libmosquitto-asio.a
 mosquitto-asio-test
