@@ -33,7 +33,7 @@ void client::connect(char const* host, int port, int keep_alive) {
         return;
     }
 
-    await_timer_connect();
+    assign_socket();
 }
 
 void client::publish(char const* topic, std::string const& payload,
@@ -70,32 +70,7 @@ void client::handle_timer_reconnect(error_code ec) {
         await_timer_reconnect();
         return;
     }
-    await_timer_connect();
-}
-
-void client::await_timer_connect() {
-    using boost::posix_time::milliseconds;
-    timer_.expires_from_now(milliseconds(100));
-    timer_.async_wait([this](error_code ec) { handle_timer_connect(ec); });
-}
-
-void client::handle_timer_connect(error_code ec) {
-    if (ec == boost::system::errc::operation_canceled) {
-        return;
-    }
-    if (ec) {
-        throw boost::system::system_error(ec);
-    }
-
-    auto rc = native::loop(native_handle_);
-    if (rc == errc::connection_lost) {
-        await_timer_reconnect();
-        return;
-    } else if (rc) {
-        throw std::system_error(rc);
-    }
-
-    await_timer_connect();
+    assign_socket();
 }
 
 void client::await_timer_misc() {
@@ -199,7 +174,7 @@ void client::assign_socket() {
 
     await_read();
     await_write();
-    await_timer_misc();
+
 }
 
 void client::release_socket() {
@@ -249,6 +224,7 @@ void client::set_callbacks() {
         });
 #endif
 }
+
 void client::on_connect(int rc) {
     if (rc) {
         LOG_ERROR(<< "client::on_connect; connection refused code=" << rc);
@@ -259,7 +235,7 @@ void client::on_connect(int rc) {
     LOG_VERBOSE(<< "client::on_connect; connected");
 
     connected_ = true;
-    assign_socket();
+    await_timer_misc();
 
     publish("mosquitto-asio-test", "connected!", 0, false);
     connected_signal();
@@ -277,13 +253,15 @@ void client::on_disconnect(int rc) {
     release_socket();
     disconnected_signal();
 
-    if (rc) {
+    if (!rc) {
+        LOG_INFO(<< "client::on_disconnect; disconnected as expected");
+        // cancels loop_misc timer
+        timer_.cancel();
+    } else {
         LOG_ERROR(<< "client::on_disconnect; disconnected unexpectedly:"
                      " reconnecting");
         await_timer_reconnect();
-        return;
     }
-    LOG_INFO(<< "client::on_disconnect; disconnected as expected");
 }
 
 void client::on_message(std::string const& topic, std::string const& payload) {

@@ -50,9 +50,6 @@ class client {
     void await_timer_reconnect();
     void handle_timer_reconnect(error_code ec);
 
-    void await_timer_connect();
-    void handle_timer_connect(error_code ec);
-
     void await_timer_misc();
     void handle_timer_misc(error_code ec);
 
